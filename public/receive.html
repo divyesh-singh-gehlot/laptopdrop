@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>LaptopDrop — Receive</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="phone">
+  <div class="card row" style="justify-content:space-between">
+    <div>
+      <div><span id="dot" class="dot"></span><span id="conn">Connecting…</span></div>
+      <div class="muted" id="hostLine"></div>
+    </div>
+    <button id="renameBtn">Rename</button>
+  </div>
+
+  <div class="card status" style="margin-top:1rem">
+    <div class="big">📥</div>
+    <h2>Waiting for files…</h2>
+    <p class="muted">Keep this page open. Files appear here when the laptop sends them.</p>
+  </div>
+
+  <div id="receivedWrap" style="margin-top:1rem;display:none">
+    <h2>Received</h2>
+    <div id="received" style="display:flex;flex-direction:column;gap:1rem"></div>
+  </div>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="sheet">
+    <h3 id="inTitle"></h3>
+    <div id="inDetails" class="muted"></div>
+    <div class="actions">
+      <button id="declineBtn" class="danger">Decline</button>
+      <button id="acceptBtn" class="primary">Accept</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/receive.js"></script>
+</body>
+</html>

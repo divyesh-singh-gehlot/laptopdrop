@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LaptopDrop</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="logo">📡 LaptopDrop</div>
+      <div class="row">
+        <span class="muted">This laptop:</span>
+        <strong id="myName">…</strong>
+        <button id="renameBtn">Rename</button>
+      </div>
+    </div>
+    <div class="row card">
+      <img id="qr" class="qr" alt="QR code for phone">
+      <div>
+        <div class="muted">Open on your phone:</div>
+        <code class="url" id="lanUrl">…</code>
+        <div class="muted" style="margin-top:.3rem">Same Wi-Fi required</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <section class="card">
+        <h2>Nearby devices</h2>
+        <div id="devices" class="devices"></div>
+        <p id="noDevices" class="muted">No devices yet. Open the link above on your phone, or run LaptopDrop on another laptop.</p>
+      </section>
+
+      <section class="card">
+        <h2>Send</h2>
+        <div id="drop" class="drop">
+          <strong>Drop images here</strong> or click to choose
+          <div class="muted">JPG, PNG, GIF, WEBP, HEIC</div>
+          <input id="fileInput" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,.heic,image/*" multiple hidden>
+        </div>
+        <div id="thumbs" class="thumbs"></div>
+        <textarea id="text" placeholder="Type a message (optional)" style="margin-top:.75rem"></textarea>
+        <div class="row" style="margin-top:.75rem;justify-content:space-between">
+          <span id="target" class="muted">Select a device above</span>
+          <button id="sendBtn" class="primary" disabled>Send</button>
+        </div>
+      </section>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <section class="card">
+        <h2>Transfers</h2>
+        <ul id="transfers" class="list"></ul>
+        <p id="noTransfers" class="muted">Nothing sent yet.</p>
+      </section>
+      <section class="card">
+        <div class="row" style="justify-content:space-between">
+          <h2>Received</h2>
+          <button id="openFolder">Open folder</button>
+        </div>
+        <ul id="received" class="list"></ul>
+        <p id="noReceived" class="muted">Nothing received yet.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="overlay" class="overlay">
+  <div class="sheet">
+    <h3 id="inTitle"></h3>
+    <div id="inDetails" class="muted"></div>
+    <div class="actions">
+      <button id="declineBtn" class="danger">Decline</button>
+      <button id="acceptBtn" class="primary">Accept</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>

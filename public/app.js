@@ -1,7 +1,8 @@
 // Host UI (localhost only): send + receive
 (() => {
   const $ = (id) => document.getElementById(id);
-  const ALLOWED = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'];
+  // Keep in sync with BLOCKED_EXT in server.js
+  const BLOCKED = ['.exe', '.msi', '.bat', '.cmd', '.com', '.scr', '.ps1', '.vbs', '.vbe', '.wsf', '.hta', '.jar', '.lnk', '.reg', '.dll'];
   let devices = [];
   let selected = null;
   let files = [];
@@ -12,7 +13,7 @@
     const t = $('toast'); t.textContent = msg; t.style.display = 'block';
     clearTimeout(toast._t); toast._t = setTimeout(() => (t.style.display = 'none'), 3000);
   };
-  const fmtSize = (b) => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+  const fmtSize = (b) => (b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
   const el = (tag, props = {}, ...kids) => {
     const e = document.createElement(tag);
     Object.assign(e, props);
@@ -21,7 +22,7 @@
   };
   const describe = (files, hasText) => {
     const parts = [];
-    if (files.length) parts.push(`${files.length} image${files.length > 1 ? 's' : ''}`);
+    if (files.length) parts.push(`${files.length} file${files.length > 1 ? 's' : ''}`);
     if (hasText) parts.push('a text message');
     return parts.join(' and ');
   };
@@ -80,7 +81,7 @@
   function addFiles(list) {
     for (const f of list) {
       const ext = (f.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
-      if (!ALLOWED.includes(ext)) { toast(`Skipped ${f.name}: not an allowed image`); continue; }
+      if (BLOCKED.includes(ext)) { toast(`Skipped ${f.name}: this file type is blocked for safety`); continue; }
       files.push(f);
     }
     renderThumbs();
@@ -90,9 +91,9 @@
     box.querySelectorAll('img').forEach((i) => URL.revokeObjectURL(i.src));
     box.replaceChildren();
     files.forEach((f, i) => {
-      const t = el('div', { className: 'thumb', title: f.name });
-      if (/heic$/i.test(f.name)) t.append(el('span', { textContent: f.name }));
-      else t.append(el('img', { src: URL.createObjectURL(f), alt: f.name }));
+      const t = el('div', { className: 'thumb', title: `${f.name} (${fmtSize(f.size)})` });
+      if (/\.(jpe?g|png|gif|webp)$/i.test(f.name)) t.append(el('img', { src: URL.createObjectURL(f), alt: f.name }));
+      else t.append(el('span', { textContent: '📄 ' + f.name })); // non-images: icon + name
       const x = el('button', { textContent: '✕', title: 'Remove' });
       x.onclick = () => { files.splice(i, 1); renderThumbs(); };
       t.append(x);

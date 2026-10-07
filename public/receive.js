@@ -13,10 +13,10 @@
     clearTimeout(toast._t); toast._t = setTimeout(() => (t.style.display = 'none'), 3000);
   };
   const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); Object.assign(e, props); kids.forEach((k) => e.append(k)); return e; };
-  const fmtSize = (b) => (b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
+  const fmtSize = (b) => (b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
   const describe = (files, hasText) => {
     const p = [];
-    if (files.length) p.push(`${files.length} image${files.length > 1 ? 's' : ''}`);
+    if (files.length) p.push(`${files.length} file${files.length > 1 ? 's' : ''}`);
     if (hasText) p.push('a text message');
     return p.join(' and ');
   };
@@ -64,11 +64,16 @@
     }
     if (m.files.length) {
       for (const f of m.files) {
-        const img = el('img', { className: 'recv-img', alt: f.name, loading: 'lazy', src: f.url + '&inline=1' });
-        img.onerror = () => img.replaceWith(el('div', { className: 'muted', textContent: `${f.name} (preview not supported)` }));
         const dl = el('a', { className: 'btn primary', href: f.url, textContent: `Download ${f.name}` });
         dl.setAttribute('download', f.name);
-        card.append(img, dl);
+        if (/\.(jpe?g|png|gif|webp|heic)$/i.test(f.name)) {
+          const img = el('img', { className: 'recv-img', alt: f.name, loading: 'lazy', src: f.url + '&inline=1' });
+          img.onerror = () => img.replaceWith(el('div', { className: 'muted', textContent: `${f.name} (preview not supported)` }));
+          card.append(img, dl);
+        } else {
+          // Non-image: no preview, just name, size and download
+          card.append(el('div', { className: 'muted', textContent: `📄 ${f.name} (${fmtSize(f.size)})` }), dl);
+        }
       }
       if (m.files.length > 1) {
         const all = el('button', { textContent: 'Download all', style: 'margin-top:.75rem' });
@@ -81,7 +86,9 @@
         };
         card.append(el('div', {}, all));
       }
-      card.append(el('p', { className: 'muted', textContent: 'Tip: on iPhone you can also long-press an image and choose "Save to Photos".' }));
+      if (m.files.some((f) => /\.(jpe?g|png|gif|webp|heic)$/i.test(f.name))) {
+        card.append(el('p', { className: 'muted', textContent: 'Tip: on iPhone you can also long-press an image and choose "Save to Photos".' }));
+      }
     }
     $('received').prepend(card);
     $('receivedWrap').style.display = '';

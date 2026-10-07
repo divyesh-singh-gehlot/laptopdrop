@@ -5,13 +5,14 @@
 const CONFIG = {
   START_PORT: 3000,
   MAX_PORT_TRIES: 20,
-  MAX_FILE_SIZE: 100 * 1024 * 1024, // 100 MB per file
+  MAX_FILE_SIZE: 1024 * 1024 * 1024, // 1 GB per file
   MAX_FILES: 20,
   MAX_TEXT_LENGTH: 100000,
   PENDING_TIMEOUT_MS: 60 * 1000,          // pending transfers expire after 60s
   ACCEPTED_KEEP_MS: 10 * 60 * 1000,       // accepted phone files kept max 10 min (or until session ends)
-  ALLOWED_EXT: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic'],
-  ALLOWED_MIME: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'],
+    BLOCK_DANGEROUS: true, // set to false to allow every file type
+  BLOCKED_EXT: ['.exe', '.msi', '.bat', '.cmd', '.com', '.scr', '.ps1', '.vbs', '.vbe', '.wsf', '.hta', '.jar', '.lnk', '.reg', '.dll'],
+  INLINE_MIME: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'], // only these may be previewed
   OPEN_BROWSER: true,
 };
 // ==================================================
@@ -57,9 +58,10 @@ function sanitizeName(name) {
   return base.slice(0, 180);
 }
 
-function isAllowedImage(name, mime) {
+function isAllowedFile(name) {
   const ext = path.extname(name).toLowerCase();
-  return CONFIG.ALLOWED_EXT.includes(ext) && CONFIG.ALLOWED_MIME.includes(String(mime).toLowerCase());
+  if (CONFIG.BLOCK_DANGEROUS && CONFIG.BLOCKED_EXT.includes(ext)) return false;
+  return true;
 }
 
 function rmSafe(p) {
@@ -132,10 +134,10 @@ function makeUpload() {
       filename: (req, file, cb) => cb(null, newId()),
     }),
     limits: { fileSize: CONFIG.MAX_FILE_SIZE, files: CONFIG.MAX_FILES, fieldSize: CONFIG.MAX_TEXT_LENGTH * 4 },
-    fileFilter: (req, file, cb) => {
+        fileFilter: (req, file, cb) => {
       const name = sanitizeName(file.originalname);
-      if (!isAllowedImage(name, file.mimetype)) {
-        const err = new Error(`File type not allowed: ${name}`);
+      if (!isAllowedFile(name)) {
+        const err = new Error(`File type not allowed for safety: ${name}`);
         err.code = 'BAD_TYPE';
         return cb(err);
       }
@@ -243,7 +245,7 @@ app.post('/api/send', requireLocal, async (req, res) => {
   } catch (err) {
     return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: err.message });
   }
-  const files = (req.files || []).map((f) => ({ path: f.path, name: sanitizeName(f.originalname), size: f.size, mime: f.mimetype }));
+  const files = (req.files || []).map((f) => ({ path: f.path, name: sanitizeName(f.originalname), size: f.size, mime: f.mimetype || 'application/octet-stream' }));
   const text = typeof req.body.text === 'string' ? req.body.text.slice(0, CONFIG.MAX_TEXT_LENGTH) : '';
   const clientKey = String(req.body.clientKey || newId()).slice(0, 64);
   const deviceId = String(req.body.deviceId || '');
@@ -350,9 +352,10 @@ app.get('/api/download/:id/:idx', (req, res) => {
   if (!phone || req.query.token !== phone.token) return res.status(403).send('Forbidden');
   const f = t.files[Number(req.params.idx)];
   if (!f || !fs.existsSync(f.path)) return res.status(404).send('Not found');
-  res.setHeader('Content-Type', f.mime);
+  const isImg = CONFIG.INLINE_MIME.includes(String(f.mime).toLowerCase());
+  res.setHeader('Content-Type', isImg ? f.mime : 'application/octet-stream');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  const disp = req.query.inline ? 'inline' : 'attachment';
+  const disp = req.query.inline && isImg ? 'inline' : 'attachment';
   res.setHeader('Content-Disposition', `${disp}; filename*=UTF-8''${encodeURIComponent(f.name)}`);
   const stream = fs.createReadStream(f.path); // streamed
   stream.pipe(res);

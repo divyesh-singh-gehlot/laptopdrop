@@ -1,17 +1,25 @@
 # LaptopDrop
 
-An AirDrop-style app for your local network. Send images and text from your laptop to your phone (or to another laptop) over Wi-Fi. No internet, no accounts, no cloud, and no app to install on the phone.
+[![npm](https://img.shields.io/npm/v/laptopdrop)](https://www.npmjs.com/package/laptopdrop)
+
+An AirDrop-style app for your local network. Send files and text from your laptop to your phone (or to another laptop) over Wi-Fi. No internet, no accounts, no cloud, and no app to install on the phone.
+
+```bash
+npx laptopdrop@latest
+```
 
 > **Status:** early prototype. The UI is basic and only the core functionality works. Contributions and feedback are welcome.
 
 ## Features
 
-- Send images and text from a laptop to a phone or another laptop
+- Send **any file type** (images, documents, PDFs, videos, archives, and more) and text
+- Send from a laptop to a phone or to another laptop
 - Phone connects by scanning a QR code and just opens a web page (no install)
 - Laptop-to-laptop discovery using mDNS
 - Receiver must tap **Accept** before anything is saved or shown
 - Transfers expire after 60 seconds if not accepted
 - Files stay on your local network and never touch the cloud
+- Image thumbnails and previews; other files show their name and size
 - Light and dark mode
 
 ## How it differs from real AirDrop
@@ -21,7 +29,8 @@ Real AirDrop uses Bluetooth and peer-to-peer Wi-Fi, so devices can share just by
 ## Current limitations
 
 - Phones are **receive-only** for now (they cannot send)
-- Only image files and text are supported so far
+- Executable and script files are blocked for safety (see [Security notes](#security-notes))
+- Large files (such as videos) depend on your network speed and the size limit in `server.js`
 - Plain HTTP only (no encryption yet)
 - Basic UI
 
@@ -36,10 +45,25 @@ Real AirDrop uses Bluetooth and peer-to-peer Wi-Fi, so devices can share just by
 
 ## Requirements
 
-- Node.js 18 or newer
+- Node.js 20 or newer
 - Laptop and phone on the **same Wi-Fi network**
 
-## Setup
+## Install and run
+
+### Option 1: npx (no install)
+
+```bash
+npx laptopdrop@latest
+```
+
+### Option 2: install globally
+
+```bash
+npm install -g laptopdrop
+laptopdrop
+```
+
+### Option 3: from source
 
 ```bash
 git clone <your-repo-url>
@@ -55,22 +79,27 @@ Open on this laptop: http://localhost:3000
 Open on your phone:  http://192.168.x.x:3000
 ```
 
+### Updating
+
+- `npx laptopdrop@latest` always fetches the newest version.
+- If installed globally: `npm update -g laptopdrop`
+
 ## Usage
 
 ### Laptop to phone
 
-1. Run `npm start` on the laptop. The page opens at `http://localhost:3000`.
+1. Run LaptopDrop on the laptop. The page opens at `http://localhost:3000`.
 2. On your phone, scan the QR code (from the terminal or the page), or type the "Open on your phone" URL into the phone's browser.
 3. The phone appears under **Nearby devices** on the laptop page.
-4. Select the phone, add images or type text, then click **Send**.
-5. On the phone, tap **Accept**, then **Download** the images or **Copy** the text.
+4. Select the phone, add files or type text, then click **Send**.
+5. On the phone, tap **Accept**, then **Download** the files or **Copy** the text.
 
 ### Laptop to laptop
 
 1. Run LaptopDrop on both laptops (same Wi-Fi).
 2. Each laptop shows the other under **Nearby devices**.
-3. Select it, add images or text, and click **Send**.
-4. The receiving laptop clicks **Accept**. Images are saved to `~/Downloads/LaptopDrop`.
+3. Select it, add files or text, and click **Send**.
+4. The receiving laptop clicks **Accept**. Files are saved to `~/Downloads/LaptopDrop`.
 
 ## Network setup
 
@@ -100,6 +129,14 @@ Both devices need to be on the same local network. The network does **not** need
 - Some college, office and public Wi-Fi networks block device-to-device traffic ("client isolation"). Use a home router, a laptop hotspot, or a phone hotspot with both devices as clients.
 - Make sure the phone's page is still open and connected.
 
+**A file was skipped or rejected**
+- Executable and script types (for example `.exe`, `.bat`, `.ps1`) are blocked. See [Security notes](#security-notes).
+- Check the file is under the size limit set in `server.js`.
+
+**Large file transfer fails or stalls**
+- Keep both devices on a strong Wi-Fi connection and keep the phone page open until the download finishes.
+- Make sure the sending and receiving laptops have enough free disk space, since files are staged in a temporary folder.
+
 **Phone browser warns the site is "not secure"**
 - Expected: LaptopDrop uses plain HTTP. This is fine on a network you trust, but avoid using it on public Wi-Fi.
 
@@ -110,26 +147,35 @@ Both devices need to be on the same local network. The network does **not** need
 
 - Nothing is saved or shown until the receiver accepts.
 - Pending transfers expire after 60 seconds and temporary files are deleted.
-- File names are sanitized and only image types are allowed by default.
+- File names are sanitized to prevent path traversal.
+- These file types are blocked by default: `.exe`, `.msi`, `.bat`, `.cmd`, `.com`, `.scr`, `.ps1`, `.vbs`, `.vbe`, `.wsf`, `.hta`, `.jar`, `.lnk`, `.reg`, `.dll`. The list is `BLOCKED_EXT` in `server.js`.
+- Only image files are ever displayed inline on the phone. Everything else is served as a download.
 - Received text is escaped before display.
 - Only the laptop running the server can send; phones can only receive.
 - Traffic is **not encrypted yet**, so use it only on networks you trust.
+- Only accept files from devices and people you recognize.
 
 ## Configuration
 
-Settings are at the top of `server.js`:
+Settings are in the `CONFIG` object at the top of `server.js`:
 
 | Setting | Default | Description |
 |---|---|---|
-| `PORT` | `3000` | Starting port (tries the next ones if busy) |
-| `MAX_FILE_SIZE` | `100 MB` | Maximum size per file |
-| `TRANSFER_TIMEOUT` | `60 s` | How long a request waits for Accept |
+| `START_PORT` | `3000` | Starting port (tries the next ones if busy) |
+| `MAX_FILE_SIZE` | `100 MB` | Maximum size per file. Increase it to send large videos |
+| `MAX_FILES` | `20` | Maximum files per transfer |
+| `PENDING_TIMEOUT_MS` | `60000` | How long a request waits for Accept |
+| `ACCEPTED_KEEP_MS` | `10 min` | How long files stay available for the phone to download after Accept |
+| `BLOCKED_EXT` | see above | File extensions that are rejected |
+| `OPEN_BROWSER` | `true` | Open the page automatically on start |
 
 ## Project structure
 
 ```
 laptopdrop/
 ├── package.json
+├── bin/
+│   └── laptopdrop.js  # CLI entry point (npx laptopdrop)
 ├── server.js          # Express, mDNS, WebSocket, transfer logic
 ├── public/
 │   ├── index.html     # Laptop (host) UI
@@ -137,14 +183,16 @@ laptopdrop/
 │   ├── receive.html   # Phone (receive-only) UI
 │   ├── receive.js
 │   └── style.css
+├── LICENSE
 └── README.md
 ```
 
 ## Roadmap
 
-- [ ] Better UI design
-- [ ] Support for documents and other file types (PDF, DOCX, etc.)
+- [x] Publish as an npm package
+- [x] Support for documents and other file types
 - [ ] Let phones send files to laptops
+- [ ] Better UI design
 - [ ] HTTPS with a self-signed certificate
 - [ ] Electron desktop app with a tray icon
 - [ ] Transfer history and progress improvements
